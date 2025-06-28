@@ -1,0 +1,48 @@
+{
+  "1111": {
+    "username": "1111",
+    "password": "$2b$10$KJU5NUlVNhIWo4uySUsHCesrmzKmC88pWvO6XEdjehu2dsSpu8Mom",
+    "email": "",
+    "createdAt": "2025-06-28T04:35:05.810Z",
+    "lastLogin": "2025-06-28T08:13:18.210Z",
+    "friends": [
+      "7500",
+      "1234"
+    ],
+    "friendRequests": [],
+    "sentRequests": []
+  },
+  "1234": {
+    "username": "1234",
+    "password": "$2b$10$KGH0bSS5MeSLL82z8msTfef2VMefLIsxetykPb7djCUZRG4W0N23i",
+    "email": "",
+    "createdAt": "2025-06-28T03:52:47.447Z",
+    "lastLogin": "2025-06-28T06:17:38.080Z",
+    "friends": [
+      "7500",
+      "1111"
+    ],
+    "friendRequests": [],
+    "sentRequests": []
+  },
+  "2222": {
+    "username": "2222",
+    "password": "$2b$10$IX3T5bN23RafixR3aegI7OtEKqXgKdiv9I1D1pSX/ZYhvyDG2avvG",
+    "email": "",
+    "createdAt": "2025-06-28T06:18:03.553Z",
+    "lastLogin": null
+  },
+  "7500": {
+    "username": "7500",
+    "password": "$2b$10$UcvPObY9GT.4g64U2sVsj.p5ifVpIERElaX9NiL0wbntk.AvUc9J.",
+    "email": "",
+    "createdAt": "2025-06-28T03:42:36.121Z",
+    "lastLogin": "2025-06-28T08:14:28.668Z",
+    "friends": [
+      "1111",
+      "1234"
+    ],
+    "friendRequests": [],
+    "sentRequests": []
+  }
+}

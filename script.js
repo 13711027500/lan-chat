@@ -121,12 +121,20 @@ const WS_SERVERS = [
 let currentWsServerIndex = 0;
 
 function connectWebSocket() {
+    console.log('=== 调试信息 ===');
+    console.log('当前域名:', location.hostname);
+    console.log('当前URL:', location.href);
+    console.log('isGitHubPages() 结果:', isGitHubPages());
+    console.log('================');
+    
     // 如果是GitHub Pages环境，直接启用本地模式
     if (isGitHubPages()) {
         console.log('检测到GitHub Pages环境，启用本地聊天模式');
         initLocalChatMode();
         return;
     }
+    
+    console.log('未检测到GitHub Pages环境，尝试WebSocket连接');
     
     // 如果是本地开发环境，使用本地服务器
     if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {

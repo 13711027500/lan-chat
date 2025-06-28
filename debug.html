@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>调试页面</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .debug-info { background: #f0f0f0; padding: 10px; margin: 10px 0; border-radius: 5px; }
+        .error { background: #ffebee; color: #c62828; }
+        .success { background: #e8f5e8; color: #2e7d32; }
+        button { padding: 10px 20px; margin: 5px; }
+        #output { margin-top: 20px; padding: 10px; background: #f5f5f5; min-height: 200px; }
+    </style>
+</head>
+<body>
+    <h1>GitHub Pages 调试页面</h1>
+    
+    <div class="debug-info">
+        <h3>环境检测</h3>
+        <div id="env-info"></div>
+    </div>
+    
+    <div class="debug-info">
+        <h3>功能测试</h3>
+        <button onclick="testLocalStorage()">测试本地存储</button>
+        <button onclick="testMessageSending()">测试消息发送</button>
+        <button onclick="clearStorage()">清除存储</button>
+    </div>
+    
+    <div id="output"></div>
+
+    <script>
+        function log(message, type = 'info') {
+            const output = document.getElementById('output');
+            const div = document.createElement('div');
+            div.className = type;
+            div.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            output.appendChild(div);
+            console.log(message);
+        }
+
+        // 环境检测
+        function checkEnvironment() {
+            const envInfo = document.getElementById('env-info');
+            const hostname = location.hostname;
+            const protocol = location.protocol;
+            
+            let info = `
+                <p><strong>主机名:</strong> ${hostname}</p>
+                <p><strong>协议:</strong> ${protocol}</p>
+                <p><strong>完整URL:</strong> ${location.href}</p>
+            `;
+            
+            if (hostname.includes('github.io')) {
+                info += '<p class="success">✅ 检测到 GitHub Pages 环境</p>';
+                log('检测到 GitHub Pages 环境', 'success');
+            } else {
+                info += '<p class="error">❌ 不是 GitHub Pages 环境</p>';
+                log('不是 GitHub Pages 环境', 'error');
+            }
+            
+            envInfo.innerHTML = info;
+        }
+
+        // 测试本地存储
+        function testLocalStorage() {
+            try {
+                localStorage.setItem('test', 'Hello World');
+                const result = localStorage.getItem('test');
+                if (result === 'Hello World') {
+                    log('✅ 本地存储测试成功', 'success');
+                } else {
+                    log('❌ 本地存储测试失败', 'error');
+                }
+            } catch (e) {
+                log(`❌ 本地存储错误: ${e.message}`, 'error');
+            }
+        }
+
+        // 测试消息发送
+        function testMessageSending() {
+            try {
+                // 模拟消息发送
+                const message = {
+                    type: 'message',
+                    user: '测试用户',
+                    text: '这是一条测试消息',
+                    time: Date.now()
+                };
+                
+                // 保存到本地存储
+                let history = JSON.parse(localStorage.getItem('lanChatHistory') || '[]');
+                history.push(message);
+                localStorage.setItem('lanChatHistory', JSON.stringify(history));
+                
+                log('✅ 消息发送测试成功', 'success');
+                log(`消息内容: ${message.text}`);
+                
+                // 模拟回复
+                setTimeout(() => {
+                    const reply = {
+                        type: 'message',
+                        user: '模拟用户',
+                        text: '收到你的消息！',
+                        time: Date.now()
+                    };
+                    history.push(reply);
+                    localStorage.setItem('lanChatHistory', JSON.stringify(history));
+                    log('✅ 模拟回复已添加', 'success');
+                }, 1000);
+                
+            } catch (e) {
+                log(`❌ 消息发送测试失败: ${e.message}`, 'error');
+            }
+        }
+
+        // 清除存储
+        function clearStorage() {
+            try {
+                localStorage.removeItem('lanChatHistory');
+                localStorage.removeItem('lanPrivateChatHistory');
+                log('✅ 存储已清除', 'success');
+            } catch (e) {
+                log(`❌ 清除存储失败: ${e.message}`, 'error');
+            }
+        }
+
+        // 页面加载时执行
+        window.onload = function() {
+            log('页面加载完成');
+            checkEnvironment();
+        };
+    </script>
+</body>
+</html> 

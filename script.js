@@ -3,6 +3,11 @@ let currentUser = null;
 let authToken = null;
 let isGuest = false;
 
+// 本地聊天模式
+let isLocalMode = false;
+let localMessages = [];
+let localUsers = new Set();
+
 // 私聊功能相关变量
 let privateChats = new Map(); // 存储私聊窗口
 let privateChatWindows = new Map(); // 存储私聊窗口DOM元素
@@ -820,11 +825,6 @@ function loadPrivateChatHistory(chatId) {
 
     messagesContainer.scrollTop = messagesContainer.scrollHeight;
 }
-
-// 本地聊天模式
-let isLocalMode = false;
-let localMessages = [];
-let localUsers = new Set();
 
 // 检查是否为GitHub Pages环境
 function isGitHubPages() {

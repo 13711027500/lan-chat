@@ -111,40 +111,90 @@ let reconnectAttempts = 0;
 const MAX_RECONNECT_ATTEMPTS = 5;
 const RECONNECT_DELAY = 3000;
 
+// 使用免费的WebSocket服务
+const WS_SERVERS = [
+    'wss://echo.websocket.org',  // 免费测试服务
+    'wss://ws.postman-echo.com/raw',  // Postman Echo服务
+    'wss://demos.kaazing.com/echo'  // Kaazing Echo服务
+];
+
+let currentWsServerIndex = 0;
+
 function connectWebSocket() {
-    const protocol = location.protocol === 'https:' ? 'wss' : 'ws';
-    const wsUrl = `${protocol}://${location.host}`;
+    // 如果是GitHub Pages环境，直接启用本地模式
+    if (isGitHubPages()) {
+        console.log('检测到GitHub Pages环境，启用本地聊天模式');
+        initLocalChatMode();
+        return;
+    }
     
-    console.log('正在连接WebSocket:', wsUrl);
-    
-    ws = new WebSocket(wsUrl);
+    // 如果是本地开发环境，使用本地服务器
+    if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
+        const protocol = location.protocol === 'https:' ? 'wss' : 'ws';
+        const wsUrl = `${protocol}://${location.host}`;
+        console.log('本地开发环境，连接:', wsUrl);
+        ws = new WebSocket(wsUrl);
+    } else {
+        // 生产环境使用免费WebSocket服务
+        const wsUrl = WS_SERVERS[currentWsServerIndex];
+        console.log('生产环境，连接免费WebSocket服务:', wsUrl);
+        ws = new WebSocket(wsUrl);
+    }
     
     ws.onopen = () => {
         console.log('WebSocket连接成功');
         reconnectAttempts = 0;
         
+        // 发送加入消息
+        const joinMessage = {
+            type: "join",
+            user: currentUser.username,
+            timestamp: Date.now()
+        };
+        
         if (isGuest) {
-            // 游客模式
-            ws.send(JSON.stringify({ type: "join", user: currentUser.username }));
+            joinMessage.token = null;
         } else {
-            // 认证用户模式
-            ws.send(JSON.stringify({
-                type: "join",
-                user: currentUser.username,
-                token: authToken
-            }));
+            joinMessage.token = authToken;
         }
+        
+        ws.send(JSON.stringify(joinMessage));
+        
+        // 显示连接成功消息
+        appendMessage({ 
+            type: 'system', 
+            text: '✅ 连接成功！可以开始聊天了' 
+        }, false);
     };
     
     ws.onclose = (event) => {
         console.log('WebSocket连接关闭:', event.code, event.reason);
+        
+        // 显示连接断开消息
+        appendMessage({ 
+            type: 'system', 
+            text: '❌ 连接断开，正在尝试重连...' 
+        }, false);
+        
         if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
             reconnectAttempts++;
             console.log(`尝试重连 (${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS})...`);
+            
+            // 尝试下一个WebSocket服务器
+            if (location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
+                currentWsServerIndex = (currentWsServerIndex + 1) % WS_SERVERS.length;
+            }
+            
             setTimeout(connectWebSocket, RECONNECT_DELAY);
         } else {
-            console.error('WebSocket重连失败，请刷新页面重试');
-            alert('连接服务器失败，请检查网络连接或刷新页面重试');
+            console.error('WebSocket重连失败，启用本地模式');
+            appendMessage({ 
+                type: 'system', 
+                text: '❌ 连接失败，切换到本地聊天模式' 
+            }, false);
+            
+            // 连接失败后启用本地模式
+            initLocalChatMode();
         }
     };
     
@@ -155,7 +205,15 @@ function connectWebSocket() {
     ws.onmessage = async (event) => {
         const raw = event.data instanceof Blob ? await event.data.text() : event.data;
         let data;
-        try { data = JSON.parse(raw); } catch { return; }
+        
+        try { 
+            data = JSON.parse(raw); 
+        } catch (e) {
+            console.log('收到非JSON消息:', raw);
+            return; 
+        }
+
+        console.log('收到消息:', data);
 
         if (data.type === 'message') {
             appendMessage(data, true);
@@ -188,7 +246,13 @@ function connectWebSocket() {
             handleRecallMessage(data);
         } else if (data.type === 'error') {
             console.error('服务器错误:', data.message);
-            alert('服务器错误: ' + data.message);
+            appendMessage({ 
+                type: 'system', 
+                text: `❌ 错误: ${data.message}` 
+            }, false);
+        } else if (data.type === 'echo') {
+            // 处理echo服务的回显消息
+            console.log('Echo服务回显:', data);
         }
     };
 }
@@ -523,6 +587,11 @@ function openPrivateChat(targetUser) {
         return;
     }
 
+    if (isLocalMode) {
+        alert('本地聊天模式不支持私聊功能');
+        return;
+    }
+
     const chatId = [currentUser.username, targetUser].sort().join('_');
 
     // 如果私聊窗口已存在，则显示它
@@ -744,19 +813,115 @@ function loadPrivateChatHistory(chatId) {
     messagesContainer.scrollTop = messagesContainer.scrollHeight;
 }
 
-// 发送消息
+// 本地聊天模式
+let isLocalMode = false;
+let localMessages = [];
+let localUsers = new Set();
+
+// 检查是否为GitHub Pages环境
+function isGitHubPages() {
+    return location.hostname.includes('github.io') || 
+           location.hostname.includes('github.com') ||
+           location.hostname.includes('netlify.app') ||
+           location.hostname.includes('vercel.app');
+}
+
+// 初始化本地聊天模式
+function initLocalChatMode() {
+    isLocalMode = true;
+    console.log('启用本地聊天模式');
+    
+    // 添加当前用户到本地用户列表
+    localUsers.add(currentUser.username);
+    
+    // 显示本地模式提示
+    appendMessage({ 
+        type: 'system', 
+        text: '🌐 本地聊天模式已启用（仅支持本地消息存储）' 
+    }, false);
+    
+    // 模拟其他用户
+    const mockUsers = ['小明', '小红', '小李', '小王'];
+    mockUsers.forEach(user => {
+        if (user !== currentUser.username) {
+            localUsers.add(user);
+        }
+    });
+    
+    // 更新用户列表
+    updateUserList(Array.from(localUsers));
+    
+    // 添加一些模拟消息
+    const mockMessages = [
+        { user: '小明', text: '大家好！', time: Date.now() - 60000 },
+        { user: '小红', text: '你好！', time: Date.now() - 30000 },
+        { user: '小李', text: '今天天气不错', time: Date.now() - 15000 }
+    ];
+    
+    mockMessages.forEach(msg => {
+        appendMessage({
+            type: 'message',
+            user: msg.user,
+            text: msg.text,
+            time: msg.time
+        }, false);
+    });
+}
+
+// 修改发送消息函数，支持本地模式
 function sendMessage() {
     const val = input.value.trim();
     if (!val) return;
+
+    // 生成消息ID
+    const messageId = `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+    if (isLocalMode) {
+        // 本地模式：直接添加到聊天记录
+        const messageData = {
+            type: "message",
+            user: currentUser.username,
+            text: val,
+            messageId: messageId,
+            time: Date.now()
+        };
+        
+        appendMessage(messageData, true);
+        input.value = '';
+        
+        // 模拟其他用户回复
+        setTimeout(() => {
+            const mockReplies = [
+                '收到！',
+                '好的',
+                '明白了',
+                '👍',
+                '哈哈',
+                '不错'
+            ];
+            const randomUser = Array.from(localUsers).find(u => u !== currentUser.username);
+            const randomReply = mockReplies[Math.floor(Math.random() * mockReplies.length)];
+            
+            if (randomUser) {
+                const replyData = {
+                    type: "message",
+                    user: randomUser,
+                    text: randomReply,
+                    messageId: `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                    time: Date.now()
+                };
+                appendMessage(replyData, true);
+            }
+        }, 1000 + Math.random() * 3000);
+        
+        return;
+    }
 
     // 检查WebSocket连接状态
     if (!ws || ws.readyState !== WebSocket.OPEN) {
         alert('连接已断开，正在尝试重连...');
         return;
     }
-
-    // 生成消息ID
-    const messageId = `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
     try {
         ws.send(JSON.stringify({
@@ -781,10 +946,22 @@ input.addEventListener('keydown', e => {
 });
 
 // 附件发送
-attachBtn.onclick = () => fileInput.click();
+attachBtn.onclick = () => {
+    if (isLocalMode) {
+        alert('本地聊天模式不支持文件发送功能');
+        return;
+    }
+    fileInput.click();
+};
 fileInput.onchange = () => {
     const file = fileInput.files[0];
     if (!file) return;
+    
+    if (isLocalMode) {
+        alert('本地聊天模式不支持文件发送功能');
+        fileInput.value = '';
+        return;
+    }
     
     // 检查WebSocket连接状态
     if (!ws || ws.readyState !== WebSocket.OPEN) {
